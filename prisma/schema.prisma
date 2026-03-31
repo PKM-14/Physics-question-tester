@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FailureType {
+  wrong_model
+  wrong_method
+  execution_error
+  stuck
+}
+
+model User {
+  id           Int             @id @default(autoincrement())
+  email        String          @unique
+  passwordHash String
+  createdAt    DateTime        @default(now()) @map("created_at")
+  attempts     Attempt[]
+  techniques   UserTechnique[]
+
+  @@map("users")
+}
+
+model Technique {
+  id            Int             @id @default(autoincrement())
+  name          String          @unique
+  description   String
+  primaryFor    Problem[]       @relation("PrimaryTechnique")
+  userTechnique UserTechnique[]
+
+  @@map("techniques")
+}
+
+model Problem {
+  id                   Int       @id @default(autoincrement())
+  statement            String
+  difficulty           Int
+  primaryTechniqueId   Int       @map("primary_technique_id")
+  secondaryTechniqueIds Int[]    @default([]) @map("secondary_technique_ids")
+  answer               String
+  solution             String
+  keyInsight           String    @map("key_insight")
+
+  primaryTechnique Technique @relation("PrimaryTechnique", fields: [primaryTechniqueId], references: [id])
+  attempts         Attempt[]
+
+  @@map("problems")
+}
+
+model Attempt {
+  id          Int         @id @default(autoincrement())
+  userId      Int         @map("user_id")
+  problemId   Int         @map("problem_id")
+  correct     Boolean
+  failureType FailureType?
+  timeTaken   Int         @map("time_taken")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  problem Problem @relation(fields: [problemId], references: [id])
+
+  @@map("attempts")
+}
+
+model UserTechnique {
+  userId       Int   @map("user_id")
+  techniqueId  Int   @map("technique_id")
+  masteryScore Float @default(0.3) @map("mastery_score")
+
+  user      User      @relation(fields: [userId], references: [id])
+  technique Technique @relation(fields: [techniqueId], references: [id])
+
+  @@id([userId, techniqueId])
+  @@map("user_techniques")
+}
